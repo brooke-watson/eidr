@@ -22,7 +22,6 @@ eidr2 <- dplyr::select(eidr, Event.Name:Start.Date, Number.Infected, Number.of.D
 #converting factors to integers
 for (i in c(9,10,12)){
   eidr2[,i] <- gsub("years", "", eidr2[,i], perl=TRUE)
-  eidr2[,i] <- 
 }
 
  
