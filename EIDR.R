@@ -11,6 +11,7 @@ setwd(wd)
 
 #reading in EIDR database and doing some exploratory analysis 
 eidr <- read.csv(file = "eidr.csv", header = TRUE, stringsAsFactors = FALSE)
+eidr.pan <- read.csv(file = "eidr_with_pandemics.csv", header = TRUE, stringsAsFactors = FALSE)
 dim(eidr)
 names(eidr)
 str(eidr)
@@ -51,33 +52,35 @@ medinfxd <- median(eidr2$Number.Infected, na.rm = TRUE) #10295.2
 meddeath <- median(eidr2$Number.of.Deaths, na.rm = TRUE) # 62.4
 
 #arranged, ordered sequence variables for plotting one-dimensional histograms 
-eidr.i <- arrange(eidr2, Number.Infected)
-I.Count <- seq_along(eidr.i$Number.Infected)  
+eidr2 <- arrange(eidr2, Number.Infected)
+eidr2$I.Count <- seq_along(eidr2$Number.Infected)  
 
-eidr.d <- arrange(eidr2, Number.of.Deaths)
-D.Count <- seq_along(eidr.d$Number.of.Deaths) #another sequence variable 
+eidr2 <- arrange(eidr2, Number.of.Deaths)
+eidr2$D.Count <- seq_along(eidr2$Number.of.Deaths) #another sequence variable 
 
-# #plotting 
-# gi <- ggplot(eidr.i, aes(I.Count, Number.Infected))+geom_point()
-# gd <- ggplot(eidr.d, aes(D.Count, Number.of.Deaths))+geom_point()
-# grid.arrange(gi, gd, nrow=2, top = "relative impact of EIDs")
+
+#plotting deaths and number of infected 
+gi <- ggplot(eidr2, aes(I.Count, Number.Infected))+geom_point()
+gd <- ggplot(eidr2, aes(D.Count, Number.of.Deaths))+geom_point()
+grid.arrange(gi, gd, nrow=2, top = "Relative impact of EIDs")
 
 
 #frequency histogram (bar plot)
-ggplot(eidr.d, aes(Number.of.Deaths)) +
-  geom_histogram()
+hist <- ggplot(eidr2, aes(Number.of.Deaths))
+
+hist+geom_histogram()
 
 #colored by zoonosis status 
-ggplot(eidr.d, aes(Number.of.Deaths, fill=Zoonotic..Not.Event.Specific.)) +
-  geom_histogram()
+zoo_hist <- ggplot(eidr2, aes(Number.of.Deaths, fill=Zoonotic..Not.Event.Specific.)) 
+            + geom_histogram()
 
 #as a line
-ggplot(eidr.d, aes(Number.of.Deaths)) +
-  geom_freqpoly()
+
+histline <- ggplot(eidr2, aes(Number.of.Deaths)) + geom_freqpoly()
 
 #lines
-ggplot(eidr.d, aes(Number.of.Deaths, color=Zoonotic..Not.Event.Specific.)) +
-  geom_freqpoly(bins=50)
+zhistline <- ggplot(eidr2, aes(Number.of.Deaths, color=Zoonotic..Not.Event.Specific.))
+                    + geom_freqpoly(bins=50)
 
 #just deaths 
 gd <- ggplot(eidr.d, aes(D.Count, Number.of.Deaths))
