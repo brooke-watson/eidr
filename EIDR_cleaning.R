@@ -1,6 +1,7 @@
-#AMR_data_bare
+#EIDR database - master spreadsheet 
 
-# Step 1: Importing database and loading libraries.
+# Importing database and loading libraries.
+pkgs = ()
 
 library(knitr)
 library(readxl)
@@ -12,6 +13,9 @@ library(xda)
 library(plotly)
 library(janitor)
 library(stargazer)
+library(stringi)
+library(plyr)
+       
 
 # load data
 rm(list=ls())
@@ -19,32 +23,101 @@ setwd("~/Dropbox (EHA)")
 path <- paste0(getwd(), "/AMR/data/EIDR Spreadsheet.xlsx")
 list = excel_sheets(path)
 
+#source & run the function that will assign multiple objects to the global environment at once 
 source('https://gist.githubusercontent.com/brooke-watson/e03c8a785fe69cbef42a7ebfe9e24613/raw/5782d93be6b49307988a211231ee5f309298cf63/multassign.R')
-
 g(event, pathogen, host, location, col_names) %=%
-  lapply(excel_sheets(path)[c(1:4, 6)], read_excel, path=path)
+  lapply(excel_sheets(path)[c(1:4, 6)], read_excel, path=path)   # loading excel files 
 
+# filter out non-EIDs 
 event = filter(event, eidVal == 1)
+
+
 # merge data
-all = merge(event, host, by='eventName')
-  all = merge(all, pathogen, by='eventName')
-  all = merge(all, location, by='eventName')
-  all[] <- lapply(all, factor)
+all = merge(event, host, by='eventName') 
+all = merge(all, pathogen, by='eventName')
+all = merge(all, location, by='eventName')
+all = filter(all, eidVal == 1)
+  
 
 # select variables
-all = all %>%
+all2 = all %>%
   dplyr::select(eventName, eidCategoryVal, eidVal, numberInfectedVal, eidCategoryPrecis,
                 refAbstract, driverVal,
                 diseaseVal, startDateISOVal, numberDeathsVal, zoonoticVal, testingMethodVal,
-                DomesticationStatusVal, pathogenTypeVal, pathogenDrugResistanceVal,
-                pathogenDrugResistancePrecis, pathogenSpeciesVal, pathogenFamilyVal,
+                pathogenTypeVal, pathogenFamilyVal,
+                
+                # for AMR only: pathogenDrugResistanceVal, pathogenDrugResistancePrecis, 
+            
                 pathogenOrderVal, DomesticationStatusVal, hostVal,
                 hostClassVal, hostFamilyVal, hostSpeciesVal, hostTaxOrderVal,
-                locationNationVal, locationContinentVal )
+                locationNationVal, locationContinentVal ) %>% 
+                unique()  
+all = all2
 
-all = unique(all) 
+all$host.human = list(nrow(all))
+  
+#character munging 
+all = lapply(all, trimws) %>% # trim white space
+    lapply(tolower) %>% #standardize capitalization 
+    as.data.frame(stringsAsFactors = FALSE) # turn back into a data frame 
 
-lapply(oldeidr, summary) 
+
+# get number of unique values per column and set it as an attribute 
+# variables with a ton of unique values I'm not going to bother with for the time being - 
+# the frequency tables just aren't going to be interesting.
+
+un = lapply(all, unique) %>% sapply(length)     # int vector, n of unique values per variable
+attr(all, "uniques") = un                       # setting uniques as an attribute varaiable 
+summary(un)                                     # range of unique values 
+names(all[attr(all, "uniques") >  109] )        # seeing at a glance which ones are huge (top quartile)
+all = all[attr(all, "uniques") <  109 | attr(all, "names") == 'eventName']          # subsetting just the reasonable ones + uniqueID. 
+
+attr(tab, "uniques") 
+lapply(tab, unique) %>% sapply(length)
+
+ 
+
+# get numeric vals for the ones for which that makes sense 
+all$year = lapply(all$startDateISOVal, substr, start = 1, stop = 4) 
+all$year = as.numeric(all$year)
+all = dplyr::select(all, -startDateISOVal)
+
+# Plots 
+
+qplot(as.numeric(as.factor(all$pathogenTypeVal)), xlab = names(as.factor(all$pathogenTypeVal))
+
+ 
+
+all = lapply(all, trimws) %>% as.data.frame(stringsAsFactors = FALSE)
+ 
+data(english.words)
+
+
+
+all = lapply(all, tolower) %>% as.data.frame(stringsAsFactors = FALSE)   
+
+
+
+unique(all2$hostClassVal)
+# [1] "mammalia"       "aves"           "Mammalia"       NA               "Aves"          
+# [6] "Mammalia "      "Insecta"        "mammalia "      "Actinopteri;"   "Arachnida"     
+# [11] "Mamalia"        "Gastropoda"     "Actinopterygii"
+ 
+mam = agrep(pattern = "mammalia", x = all$hostClassVal, ignore.case = TRUE, value = FALSE, max.distance = 3)
+act = agrep(pattern = "actinopterygii", x = all$hostClassVal, ignore.case = TRUE, value = FALSE, max.distance = 5)
+
+all[mam, "hostClassVal"] = "mammalia"
+all[act, "hostClassVal"] = "actinopterygii"
+ 
+ 
+all$hostClassVal = all$hostClassVal[agrep("mam", "mammalia")]
+
+
+sounds = soundex(all2$hostClassVal)
+
+
+
+lapply(oldeidr, summary) %>% as.data.frame()
 
 tab = tabyl(all$pathogenDrugResistanceVal)
 
@@ -72,20 +145,24 @@ nums = nums[ , (sum(is.na(nums)) < 200)]
 nums = nums %>% as.data.frame()
 
  
-# get numeric vals for the ones for which that makes sense 
-all$year = lapply(all$startDateISOVal, substr, start = 1, stop = 4) 
-all$year = as.numeric(all$year)
-sum(is.na(all$year)) #72 
-table(all$year)
-qplot(all$year, binwidth = 5)
-summary(all$year)
-   # Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-   # 1940    1970    1980    1980    2000    2010      72 
-
-EIDR: 
+ 
+ 
 
 # ## exploring data with datacomb
 # devtools::install_github('cmpolis/datacomb', subdir='pkg', ref='1.1.2')
 # library(datacomb)
 # Datacomb(all)
 
+names = unique(all$driverVal)
+
+#iterate over something, check whether 
+dummyexpand = function(db, col, outcol) {
+    
+    names = unique(db$col)
+    for (name in names) {
+        grep("B", colnames(df))   # index number 
+        db$name = logical(length=nrow(db))
+        if db[nrow(), col]
+    
+    
+}
