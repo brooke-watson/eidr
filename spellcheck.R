@@ -17,17 +17,17 @@ spellcheck = function(word, word2 = word, column, db, max.dist = 3){
   return(db)
 }
  
-unique(all3$locationContinentVal)
-all3 = spellcheckh("north america", column = "locationContinentVal", db=all)
-all3 = all
-strsplit(all3$locationContinentVal)
+# unique(all3$locationContinentVal)
+# all3 = spellcheckh("north america", column = "locationContinentVal", db=all)
+# all3 = all
+# strsplit(all3$locationContinentVal)
 
 spellcheckh = function(word, word2, column = 'hostVal', db = all, max.dist = 3) {
   spellcheck(word, word2, column, db, max.dist = 3)
 }
 
-all3 = all = all2
-all3
+# all3 = all = all2
+# all3
 # testing on EIDR database
 # all3 = all
 # all3 = spellcheck("tanzania", "locationNationVal") # changed tanganyika to tanzania  

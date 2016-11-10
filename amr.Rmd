@@ -1,0 +1,65 @@
+---
+title: "AMR Summary Statistics"
+output: html_notebook
+---
+
+## AMR Summary Statistics 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Setup: Read in the munged datasets.
+
+```{r message=FALSE, results='hide', warning=FALSE, message=FALSE}
+rm(list=ls())
+knit('EIDR_cleaning_home.Rmd', tangle=TRUE)
+source('EIDR_cleaning_home.R')
+amr = filter(all, pathogenDrugResistanceVal == "yes")
+write.csv(amr, file = "amr_refs.csv")
+# length(unique(amr$Title))
+
+```
+
+# 2. Getting Summary Statistics. 
+
+Here we're going to convert everything to numeric and look at distributions. 
+Later we'll do the same thing with factors - this is just to get at what are the actual numeric values in the dataset, and what are the distributions of their missing values. 
+
+```{r Summary Statistics}
+  
+lapply(all, as.numeric) 
+sumlist = lapply(allnum, summary)
+ 
+
+row1 = summary(allnum$eidCategoryVal)
+row2 = summary(allnum$eventName)
+sumstats = rbind(row1, row2)
+allnumshort = rbind(as.character(sumlist))
+summarydf = lapply(allnumshort, strsplit, split = ",")
+ 
+```
+
+NAlist = lapply(NAlist, unlist)
+test = nas(all, 1)
+select
+
+# summary stats for the numeric variables
+nums = lapply(all, as.numeric)
+lapply(nums, summary) # so most things are character vectors 
+
+test= lapply((1:ncol(all)), nas, db = all)
+test= lapply((1:ncol(nums)), nas, db = nums)
+nums = nums[ , (sum(is.na(nums)) < 200)]
+nums = nums %>% as.data.frame()
+
+ 
+``` 
+ 
+# Plots 
+    
+```{r Plots}    
+    
+qplot(as.numeric(as.factor(all$pathogenTypeVal)), xlab = names(as.factor(all$pathogenTypeVal))
+          
+```           
