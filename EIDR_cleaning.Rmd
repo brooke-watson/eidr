@@ -1,0 +1,237 @@
+---
+title: "EIDR summary"
+author: "Brooke"
+date: "11/8/2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Attaching Necessary Packages.
+
+```{r Attaching Necessary Packages, warning=FALSE, message=FALSE, results='hide'}
+
+pkgs = list('knitr', 'readxl', 'dplyr', 'xtable', 'stringr', 'devtools', 'plotly', 'janitor', 'stringi')
+lapply(pkgs, library, character.only = TRUE)
+ 
+```
+
+# 2. ImportING Data.  
+
+Note - don't forget to change the working directory.
+
+## a.) Clear environment, set working directory, and import xlsx file using readxl.
+
+```{r Setup Working Directory}
+rm(list=ls())
+setwd("~/Desktop")
+path <- paste0(getwd(), "/EIDR Spreadsheet.xlsx")
+list = excel_sheets(path) # see names of excel sheets 
+```
+
+## b.) Read in the source code that will assign multiple objects in the global environment at once using an lapply loop.  
+
+```{r Source Github function, warning=FALSE, message=FALSE}
+
+source('https://gist.githubusercontent.com/brooke-watson/e03c8a785fe69cbef42a7ebfe9e24613/raw/5782d93be6b49307988a211231ee5f309298cf63/multassign.R') # find the function 
+g(event, pathogen, host, location, col_names) %=%
+  lapply(excel_sheets(path)[c(1:4, 6)], read_excel, path=path)   # loading specific excel sheets 
+```
+
+# 3. Cleaning Data. 
+
+## a.) Filter out non-EIDs and merge the datasets. 
+
+```{r Merge and Clean Datasets}
+
+event = filter(event, eidVal == 1)
+
+# merge data
+all = merge(event, host, by='eventName') 
+all = merge(all, pathogen, by='eventName')
+all = merge(all, location, by='eventName')
+``` 
+## b.) select variables and make a duplicate backup dataset just in case 
+
+```{r Merge and Clean Datasets}
+all = all %>%
+  dplyr::select(eventName, eidCategoryVal, eidVal, numberInfectedVal, driverVal,
+                diseaseVal, startDateISOVal, numberDeathsVal, zoonoticVal, testingMethodVal,
+                pathogenTypeVal, pathogenFamilyVal, pathogenDrugResistanceVal,
+                pathogenOrderVal, DomesticationStatusVal, hostVal,
+                hostClassVal, hostFamilyVal, hostSpeciesVal, hostTaxOrderVal,
+                locationNationVal, locationContinentVal ) %>% unique()
+# unique(all$pathogenTypeVal)  
+```
+
+## c.) Character Munging - trimming white space, making everything lower case, dropping duplicates. 
+
+```{r Character Munging }
+all = lapply(all, trimws) %>% # trim white space
+    lapply(tolower) %>% #standardize capitalization 
+    as.data.frame(stringsAsFactors = FALSE) %>% # turn back into a data frame 
+    unique() # drop duplicates 
+all2 = all #making a backup just in case 
+``` 
+
+This dataset still has 369 observations, while online EIDR has 350. Checking the duplicates using the `janitor` package, we can see that they're all caused by different location values.
+
+```{r Checking Duplicates}
+dupes = get_dupes(all, eventName)  
+View(dupes)
+```  
+
+# That's fine. We'll keep those for now. Moving on. 
+
+##. d.) Creating Attributes. 
+
+Here we want to get number of unique values per column and set it as an attribute. This helps get at how many different possible categorical answers there are for string variables. 
+
+```{r Creating Attributes}
+un = lapply(all, unique) %>% sapply(length)     # int vector, n of unique values per variable
+attr(all, "uniques") = un                       # setting uniques as an attribute varaiable 
+summary(un)                                     # range of unique values 
+names(all[attr(all, "uniques") >  109] )        # seeing at a glance which ones are huge (top quartile)
+# all = all[attr(all, "uniques") <  109 | attr(all, "names") == 'eventName']          
+# subsetting just the reasonable ones + uniqueID. 
+```
+
+## e. Converting Strings to Numbers. 
+
+For the ones for which that makes sense. As a reminder, it's helpful to look at `names(all)` to see which values would even make sense as numbers. One could also just check the drop down arrow in the data subheading of the environment panel in RStudio. That's what I did, so I didn't include that code. 
+
+Additionally, each event has different time frames for its startDateISOVal. Some have days, others months, and some only have a year. They seem to all have a year, though, so we're going to go with the least common denominator. They're also conveniently all listed year-first, so we don't have to do any complicated regex backflips. 
+
+```{r As.Numeric()} 
+# creating a year variable and removing the startdateiso variable from the data frame. 
+all$year = lapply(all$startDateISOVal, substr, start = 1, stop = 4) 
+all$year = as.numeric(all$year)
+all = dplyr::select(all, -startDateISOVal)
+```
+
+## f. Pulling binary encodings out of things stuck in messy strings. 
+
+Here we have a column variable called "hostVal" that includes character strings of hosts - both human and animal - in which the pathogen was found (or theorized to have colonized). Some have long lists of hosts, and some have only one. Some are a specific family or genus, others use common names, some are specific while others mention a group or category (e.g.) birds vs chickens vs aves vs "domestic avian species.")
+
+```{r Head, Host Val}
+head(all$hostVal)
+```
+
+Gross. sUnhelpful. 
+
+We're not interested in ALL of this mess, but we may want to pull some values out for summary statistics and future use in regressions and other statistical analyses. To analyze, we need encoded variables, not character vectors.
+
+The function `dummyv` (Dummy Variable) takes care of that. it takes the following arguments: 
+1.) A value - i.e., the character string you'd like to extract from a long list of character strings 
+2.) A data frame 
+3.) The column of the data frame where you want to look for the value. 
+
+dummyv initializes an empty column of zeroes and tacks it onto the end of your data frame. The name of the column will be a combination of the variable and the value name, joined by an underscore like so: `ColumnName_Value`. 
+dummyv then looks down the column for every instance of the value you're looking for. Every row that contains the value will get a 1 instead of the 0 in the new `ColumnName_Value` column.
+
+You can then get frequencies of that value in your dataset, subset by that value, compare differences of other variables, and go for gold with your normal analyses. 
+
+```{r Encoding the Data}
+# create binary dummy variables from lists 
+path = '~/Desktop/git/eidr/' 
+source(paste0(path, 'dummyv.R')  # change the path file 
+source(paste0(path, 'spellcheck.R')  # change the path file 
+
+       # (((( don't forget to make these a function later  ))))
+       
+       
+all = dummyv('human', all, 'hostVal') #testing a human binary variable 
+all = dummyvh('human')
+
+
+head(all$hostVal, 10)
+
+all = all2
+tail(all$hostVal)
+all = spellcheckh('pig', 'swine', max.dist = 1)
+tail(all$hostVal)
+```
+
+```{r}
+hostlist = list('human', 'primate', 'pig', 'rodent', bat, cat, dog, sheep, goat, donkey, cow, fish, )
+
+
+all$hostVal_human = NULL
+
+
+unique(all$driverVal)
+```
+
+#7. Fixing spelling 
+
+Test case on hostClassVal variable.   
+
+```{r Fix Spelling}
+unique(all$hostClassVal) 
+```
+
+There seem to be misspellings of actinopterygii and mammalia. Let's change that. 
+
+```{r}
+mam = agrep(pattern = "mammalia", x = all$hostClassVal, ignore.case = TRUE, value = FALSE, max.distance = 3) 
+act = agrep(pattern = "actinopterygii", x = all$hostClassVal, ignore.case = TRUE, value = FALSE, max.distance = 5) 
+  
+all[mam, "hostClassVal"] = "mammalia" 
+all[act, "hostClassVal"] = "actinopterygii"  
+``` 
+
+Check the new list to make sure it worked. 
+
+```{r Fix Spelling, eval=FALSE}
+unique(all$hostClassVal)
+```
+
+### 
+
+# Round 2: Getting Summary Statistics. 
+
+Here we're going to convert everything to numeric and look at distributions. 
+Later we'll do the same thing with factors - this is just to get at what are the actual numeric values in the dataset, and what are the distributions of their missing values. 
+
+```{r Summary Statistics}
+  
+allnum = lapply(all, as.numeric) 
+sumlist = lapply(allnum, summary)
+
+df = lapply(sumlist, rbind.fill)
+df = data_frame(df)
+
+
+row1 = summary(allnum$eidCategoryVal)
+row2 = summary(allnum$eventName)
+df = rbind(row1, row2, )
+allnumshort = rbind(as.character(sumlist))
+summarydf = lapply(allnumshort, strsplit, split = ",")
+ 
+```
+
+NAlist = lapply(NAlist, unlist)
+test = nas(all, 1)
+select
+
+# summary stats for the numeric variables
+nums = lapply(all, as.numeric)
+lapply(nums, summary) # so most things are character vectors 
+
+test= lapply((1:ncol(all)), nas, db = all)
+test= lapply((1:ncol(nums)), nas, db = nums)
+nums = nums[ , (sum(is.na(nums)) < 200)]
+nums = nums %>% as.data.frame()
+
+ 
+``` 
+ 
+# Plots 
+    
+```{r Plots}    
+    
+qplot(as.numeric(as.factor(all$pathogenTypeVal)), xlab = names(as.factor(all$pathogenTypeVal))
+          
+```           
