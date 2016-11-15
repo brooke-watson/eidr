@@ -1,15 +1,18 @@
 ---
 title: "AMR Summary Statistics"
-output: html_notebook
+output: bookdown::html_document2
 ---
+
+
 
 ## AMR Summary Statistics 
 
 ```{r setup, include=FALSE}
+library(knitr)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# 1. Setup: Read in the munged datasets.
+### 1. Setup: Read in the munged datasets.
 
 ```{r message=FALSE, results='hide', warning=FALSE, message=FALSE}
 rm(list=ls())
@@ -21,45 +24,71 @@ write.xlsx(amr, "amr_refs.xlsx", sheetName="AMR References from EIDR")
 
 ```
 
-# 2. Getting Summary Statistics. 
+### 2. Other subsets to match with the EMBASE data.
+
+For the AMR research we want to look just at bacteria and refine our focus to the 1970-2016 time frame, so let's filter this further. 
+
+```{r message=FALSE, results='hide', warning=FALSE, message=FALSE}
+
+bac = filter(amr, pathogenTypeVal == 'bacteria')
+write.xlsx(bac, "amr_refs.xlsx", append = TRUE, sheetName="Restricted to Bacteria") 
+
+year_filtered = filter(bac, year>=1970)
+write.xlsx(year_filtered, "amr_refs.xlsx", append = TRUE, sheetName="Real Filtered by Year") 
+
+```
+
+### 3. Getting Summary Statistics. 
 
 Here we're going to convert everything to numeric and look at distributions. 
 Later we'll do the same thing with factors - this is just to get at what are the actual numeric values in the dataset, and what are the distributions of their missing values. 
 
-```{r Summary Statistics}
-  
-lapply(all, as.numeric) 
-sumlist = lapply(allnum, summary)
- 
 
-row1 = summary(allnum$eidCategoryVal)
-row2 = summary(allnum$eventName)
-sumstats = rbind(row1, row2)
-allnumshort = rbind(as.character(sumlist))
-summarydf = lapply(allnumshort, strsplit, split = ",")
- 
-```
-
-NAlist = lapply(NAlist, unlist)
-test = nas(all, 1)
-select
-
-# summary stats for the numeric variables
-nums = lapply(all, as.numeric)
-lapply(nums, summary) # so most things are character vectors 
-
-test= lapply((1:ncol(all)), nas, db = all)
-test= lapply((1:ncol(nums)), nas, db = nums)
-nums = nums[ , (sum(is.na(nums)) < 200)]
-nums = nums %>% as.data.frame()
-
- 
-``` 
- 
-# Plots 
+ ### Frequency of events by country in total EIDR database.  
     
-```{r Plots}    
+```{r Frequency of events by country - All EIDR} 
+
+tab = as.numeric(table(all$locationNationVal))
+names(tab) = names(table(all$locationNationVal))
+tab = data.frame(Country = names(tab), N_events = tab)
+tab = arrange(tab, desc(N_events))
+tab$Country <- factor(tab$Country, levels = tab$Country[order(tab$N_events)])
+
+kable(tab, book)
+ 
+p = ggplot(arrange(tab, desc(N_events)), aes(Country, N_events)) +
+           geom_bar(stat = "identity") +    
+    ggtitle("All Countries with an emergence event listed in EIDR") +
+           theme(axis.text.y = element_text(angle = 0, hjust = 1)) 
+p + coord_flip()
+
+tab2 = filter(tab, N_events>1)
+p = ggplot(arrange(tab2, desc(N_events)), aes(Country, N_events)) +
+           geom_bar(stat = "identity") + 
+    ggtitle("Countries with more than one emergence event") +
+           theme(axis.text.y = element_text(angle = 0, hjust = 1)) 
+p + coord_flip()
+ 
+
+```          
+
+
+### Frequency of events by country, restricted to bacterial antibiotic resistance events.  
     
-qplot(as.numeric(as.factor(all$pathogenTypeVal)), xlab = names(as.factor(all$pathogenTypeVal))
-          
+```{r Frequency of events by country - Bacterial, Resistant} 
+
+
+tab = as.numeric(table(bac$locationNationVal))
+names(tab) = names(table(bac$locationNationVal))
+tab = data.frame(Country = names(tab), N_events = tab)
+tab = arrange(tab, desc(N_events))
+tab$Country <- factor(tab$Country, levels = tab$Country[order(tab$N_events)])
+tab$Country <- factor(tab$Country, levels = tab$Country[order(tab$N_events)])
+
+
+p = ggplot(tab, aes(Country, N_events)) +
+           geom_bar(stat = "identity") +
+           theme(axis.text.x = element_text(angle = 0, hjust = 1)) 
+p + coord_flip()
+           
 ```           

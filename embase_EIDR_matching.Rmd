@@ -18,40 +18,88 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```
 
-2. Read in the references from the systematic review.
-This first round we're only going to use the very very trimmed down search term list with 1778 responses. 
+2. set working directory, load custom packages, and source a function (tidyembase) that takes raw embase output, sets the search strings as a table attribute, and then reomves that row and cleans up the data frame. 
 
 ```{r EIDR}
 amrwd = "~/Dropbox (EHA)/AMR/Systematic Review"
 install_github('brooke-watson/thesis')
-library(thesis)
-embase = read.csv(paste0(amrwd, '/Nov 14_1778 records.csv'), stringsAsFactors = FALSE, fileEncoding = 'latin1') %>% 
-    janitor::clean_names() %>% 
-    select(title, author_names, source, issn, abstract, emtree_drug_index_terms, full_text_link) %>% 
-    munge()
+library(thesis)   
+source('~/Dropbox (EHA)/R-scraps/unpackaged undocumented/tidyembase.R')
 
 ```
 
-3. Fuzzy match em. 
+3. Read in and merge the references from the systematic review. These had to be taken out in 3 chucks because embase can only export 10,000 rows at a time, so they're sorted by date.  
 
 ```{r}
-refmatch = data.frame(eidref$)
-sp500.name$name.nyse <- "" # Creating an empty column
 
-refmatch = data.frame(eidref$doi, eidref$issn, eidref$title, eidref$author)
-refmatch$embaseissn <- "" # Creating an empty column
+embase1 = read_excel(paste0(amrwd, '/records_1970-2004.xlsx'), col_names = FALSE) %>% 
+    tidyembase()  
+embase2 = read_excel(paste0(amrwd, '/records_2005-2012.xlsx'), col_names = FALSE) %>%
+    tidyembase()  
+embase3 = read_excel(paste0(amrwd, '/records_2013-2016.xlsx'), col_names = FALSE) %>% 
+    tidyembase()  
+
+
+```
+
+4. Merge and clean. 
+
+This includes pulling the DOIs from the full text link in the embase data frame so they can be matched with EIDR.   
+
+
+```{r}
+
+embase = dplyr::bind_rows(embase1, embase2, embase3)  
+ 
+embase = embase %>% 
+    janitor::clean_names() %>% 
+    munge %>% 
+    select(title, author_names, source, abstract, full_text_link)  
+
+embase$doi = lapply(embase$full_text_link, sub, 
+                    pattern = "http://dx.doi.org/", replacement = "")
+
+```
+
+5. All clean. Now fuzzy match em. Matching on doi first, and then trying to match on title and authors just in case.
+
+```{r}
+
+refmatch = data.frame(eidref$doi, eidref$title, eidref$author)
+refmatch$embasedoi <- "" # Creating an empty column
+refmatch$embaseauthor <- ""
+refmatch$embasetitle <- ""
 
 for(i in 1:dim(refmatch)[1]) {
- x <- agrep(refmatch$eidref.issn[i], embase$issn,
+ x <- agrep(refmatch$eidref.doi[i], embase$doi,
  ignore.case=TRUE, value=TRUE,
  max.distance = 0.05, useBytes = TRUE)
  x <- paste0(x,"")
- refmatch$embaseissn[i] <- x
+ refmatch$embasedoi[i] <- x
+
+ y = agrep(refmatch$eidref.author[i], embase$author_names,
+ ignore.case=TRUE, value=TRUE,
+ max.distance = 0.05, useBytes = TRUE)
+ y <- paste0(y,"")
+ refmatch$embaseauthor[i] <- y
+
+ z = agrep(refmatch$eidref.title[i], embase$title,
+ ignore.case=TRUE, value=TRUE,
+ max.distance = 0.05, useBytes = TRUE)
+ z <- paste0(z,"")
+ refmatch$embasetitle[i] <- z
+ 
 }
+```
 
-amr$embaseissn = refmatch$embaseissn 
-write.xlsx(amr, "amr_refs.xlsx", sheetName="AMR References from EIDR") 
+4. Write to a new excel sheet. Put the number of references in the name. 
 
+```{r}
+amr$embasedoi = refmatch$embasedoi 
+amr$embaseauthor = refmatch$embaseauthor
+amr$embasetitle = refmatch$embasetitle
 
+write.xlsx(amr, paste0("amr_refs_", n, ".xlsx"), sheetName="AMR References from EIDR") 
+s
 ```
 

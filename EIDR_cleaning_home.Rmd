@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r Attaching Necessary Packages, warning=FALSE, message=FALSE, results='hide'}
 
-pkgs = list('knitr', 'readxl', 'dplyr', 'xtable', 'stringr', 'devtools', 'plotly', 'janitor', 'stringi', 'xlsx')
+pkgs = list('knitr', 'readxl', 'dplyr', 'xtable', 'stringr', 'devtools', 'plotly', 'janitor', 'stringi', 'xlsx', 'bookdown')
 lapply(pkgs, library, character.only = TRUE)
  
 ```
@@ -83,6 +83,7 @@ all = lapply(all, trimws) %>% # trim white space
     as.data.frame(stringsAsFactors = FALSE) %>% # turn back into a data frame 
     unique() # drop duplicates 
 all2 = all #making a backup just in case 
+
 ``` 
 
 
@@ -190,7 +191,7 @@ Here we have a column variable called "hostVal" that includes character strings 
 head(all$hostVal, 6)
 ```
 
-Gross. sUnhelpful. 
+Gross. Unhelpful. 
 
 We're not interested in ALL of this mess, but we may want to pull some values out for summary statistics and future use in regressions and other statistical analyses. To analyze, we need encoded variables, not character vectors.
 
