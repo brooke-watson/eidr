@@ -1,14 +1,15 @@
 ---
 title: "AMR Summary Statistics"
-output: bookdown::html_document2
+author: "Brooke Watson"
+date: "November 14, 2016"
+output: html_document
 ---
 
 
 
 ## AMR Summary Statistics 
 
-```{r setup, include=FALSE}
-library(knitr)
+```{r, include=FALSE} 
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -16,6 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r message=FALSE, results='hide', warning=FALSE, message=FALSE}
 rm(list=ls())
+library(knitr)
 knit('EIDR_cleaning_home.Rmd', tangle=TRUE)
 source('EIDR_cleaning_home.R')
 amr = filter(all, pathogenDrugResistanceVal == "yes")
@@ -54,7 +56,7 @@ tab = data.frame(Country = names(tab), N_events = tab)
 tab = arrange(tab, desc(N_events))
 tab$Country <- factor(tab$Country, levels = tab$Country[order(tab$N_events)])
 
-kable(tab, book)
+kable(tab, booktabs = TRUE)
  
 p = ggplot(arrange(tab, desc(N_events)), aes(Country, N_events)) +
            geom_bar(stat = "identity") +    

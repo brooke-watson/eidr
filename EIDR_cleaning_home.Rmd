@@ -132,7 +132,7 @@ rm(NAdb)
 
 join up reference codes to reference spreadsheet 
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 
 refs = read_excel(paste0(getwd(), "/EIDR References.xlsx"), sheet = 1) %>% 
     janitor::clean_names()
