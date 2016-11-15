@@ -1,0 +1,57 @@
+---
+title: "AMR_ref_merge"
+author: "Brooke Watson"
+date: "November 14, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. Read in the amr references from EIDR. 
+
+```{r EIDR}
+wd = "/Users/Watson/Dropbox (EHA)/GVP/EIDR"
+eidref = read_excel(paste0(wd, '/amr_refs.xlsx'))
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+2. Read in the references from the systematic review.
+This first round we're only going to use the very very trimmed down search term list with 1778 responses. 
+
+```{r EIDR}
+amrwd = "~/Dropbox (EHA)/AMR/Systematic Review"
+install_github('brooke-watson/thesis')
+library(thesis)
+embase = read.csv(paste0(amrwd, '/Nov 14_1778 records.csv'), stringsAsFactors = FALSE, fileEncoding = 'latin1') %>% 
+    janitor::clean_names() %>% 
+    select(title, author_names, source, issn, abstract, emtree_drug_index_terms, full_text_link) %>% 
+    munge()
+
+```
+
+3. Fuzzy match em. 
+
+```{r}
+refmatch = data.frame(eidref$)
+sp500.name$name.nyse <- "" # Creating an empty column
+
+refmatch = data.frame(eidref$doi, eidref$issn, eidref$title, eidref$author)
+refmatch$embaseissn <- "" # Creating an empty column
+
+for(i in 1:dim(refmatch)[1]) {
+ x <- agrep(refmatch$eidref.issn[i], embase$issn,
+ ignore.case=TRUE, value=TRUE,
+ max.distance = 0.05, useBytes = TRUE)
+ x <- paste0(x,"")
+ refmatch$embaseissn[i] <- x
+}
+
+amr$embaseissn = refmatch$embaseissn 
+write.xlsx(amr, "amr_refs.xlsx", sheetName="AMR References from EIDR") 
+
+
+```
+

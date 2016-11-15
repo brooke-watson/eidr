@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r Attaching Necessary Packages, warning=FALSE, message=FALSE, results='hide'}
 
-pkgs = list('knitr', 'readxl', 'dplyr', 'xtable', 'stringr', 'devtools', 'plotly', 'janitor', 'stringi')
+pkgs = list('knitr', 'readxl', 'dplyr', 'xtable', 'stringr', 'devtools', 'plotly', 'janitor', 'stringi', 'xlsx')
 lapply(pkgs, library, character.only = TRUE)
  
 ```
@@ -77,6 +77,7 @@ all = all %>%
 ## c.) Character Munging - trimming white space, making everything lower case, dropping duplicates. 
 
 ```{r Character Munging }
+
 all = lapply(all, trimws) %>% # trim white space
     lapply(tolower) %>% #standardize capitalization 
     as.data.frame(stringsAsFactors = FALSE) %>% # turn back into a data frame 
@@ -111,7 +112,7 @@ refEidCategory is the most complete reference variable (Not counting refEventNam
 
 2. Fill in NA's in EidCategory with references from the other ref columns. 
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 if (is.na(refdb$refEidCategory) & !is.na(refdb$refAbstract)){
     refdb$refEidCategory = refdb$refAbstract
 } else {refdb$refEidCategory = refdb$refEidCategory}
@@ -132,9 +133,12 @@ join up reference codes to reference spreadsheet
 
 ```{r}
 
-refs = read.csv(paste0(getwd(), "/EIDR References.csv"), stringsAsFactors = FALSE)
-refs = select(refs, c(Rights, Author, Title, Publication.Title, DOI, Url, Access.Date)) %>% 
-    dplyr::rename(ref = Rights) %>% 
+refs = read_excel(paste0(getwd(), "/EIDR References.xlsx"), sheet = 1) %>% 
+    janitor::clean_names()
+# install_github('brooke-watson/thesis') 
+# library)
+refs = select(refs, c(rights, author, title, publication_title, doi, issn, url, access_date)) %>% 
+    dplyr::rename(ref = rights) %>% 
     lapply(trimws) %>% # trim white space
     lapply(tolower) %>% #standardize capitalization 
     as.data.frame(stringsAsFactors = FALSE)     
@@ -221,7 +225,7 @@ head(all$hostVal, 10)
 # tail(all$hostVal)
 ```
 
-Now I'm going to 
+ 
 
 ```{r}
 # hostlist = list('human', 'primate', 'pig', 'rodent', 'bat', 'cat', 'dog', 'sheep', 'goat')

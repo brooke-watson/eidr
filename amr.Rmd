@@ -16,7 +16,7 @@ rm(list=ls())
 knit('EIDR_cleaning_home.Rmd', tangle=TRUE)
 source('EIDR_cleaning_home.R')
 amr = filter(all, pathogenDrugResistanceVal == "yes")
-write.csv(amr, file = "amr_refs.csv")
+write.xlsx(amr, "amr_refs.xlsx", sheetName="AMR References from EIDR") 
 # length(unique(amr$Title))
 
 ```
