@@ -2,25 +2,31 @@
 title: "AMR_ref_merge"
 author: "Brooke Watson"
 date: "November 14, 2016"
-output: html_document
+output: word_document
 ---
+
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 1. Read in the amr references from EIDR. 
+* tbh this should not be a long term solution. it involves knitting and sourcing the amr.Rmd file, which itself knits and sources the EIDR_cleaning.Rmd file. We're getting into an untenable Russian nesting doll sitution though.  
+
 
 ```{r EIDR}
 wd = "/Users/Watson/Dropbox (EHA)/GVP/EIDR"
+knit('amr.Rmd', tangle=TRUE)
+source('amr.R')
+wd = "/Users/Watson/Dropbox (EHA)/GVP/EIDR"
 eidref = read_excel(paste0(wd, '/amr_refs.xlsx'))
-knitr::opts_chunk$set(echo = TRUE)
-
+ 
 ```
 
 2. set working directory, load custom packages, and source a function (tidyembase) that takes raw embase output, sets the search strings as a table attribute, and then reomves that row and cleans up the data frame. 
 
-```{r EIDR}
+```{r EIDR importing, warning=FALSE, message=FALSE}
 amrwd = "~/Dropbox (EHA)/AMR/Systematic Review"
 install_github('brooke-watson/thesis')
 library(thesis)   
@@ -32,12 +38,9 @@ source('~/Dropbox (EHA)/R-scraps/unpackaged undocumented/tidyembase.R')
 
 ```{r}
 
-embase1 = read_excel(paste0(amrwd, '/records_1970-2004.xlsx'), col_names = FALSE) %>% 
-    tidyembase()  
-embase2 = read_excel(paste0(amrwd, '/records_2005-2012.xlsx'), col_names = FALSE) %>%
-    tidyembase()  
-embase3 = read_excel(paste0(amrwd, '/records_2013-2016.xlsx'), col_names = FALSE) %>% 
-    tidyembase()  
+embase1 = tidyembase(paste0(amrwd, '/records_1970-2004.xlsx'))
+embase2 = tidyembase(paste0(amrwd, '/records_2005-2012.xlsx'))
+embase3 = tidyembase(paste0(amrwd, '/records_2013-2016.xlsx'))
 
 
 ```
@@ -55,10 +58,10 @@ embase = embase %>%
     janitor::clean_names() %>% 
     munge %>% 
     select(title, author_names, source, abstract, full_text_link)  
-
 embase$doi = lapply(embase$full_text_link, sub, 
                     pattern = "http://dx.doi.org/", replacement = "")
 
+rm(embase1, embase2, embase3)
 ```
 
 5. All clean. Now fuzzy match em. Matching on doi first, and then trying to match on title and authors just in case.
@@ -92,14 +95,16 @@ for(i in 1:dim(refmatch)[1]) {
 }
 ```
 
-4. Write to a new excel sheet. Put the number of references in the name. 
+4. Write to a new excel sheet. Put the number of references used in the name of the file to ID between different systematic review searches. 
 
 ```{r}
 amr$embasedoi = refmatch$embasedoi 
 amr$embaseauthor = refmatch$embaseauthor
 amr$embasetitle = refmatch$embasetitle
 
+n = dim(embase)[[1]]
+
 write.xlsx(amr, paste0("amr_refs_", n, ".xlsx"), sheetName="AMR References from EIDR") 
-s
+  
 ```
 
